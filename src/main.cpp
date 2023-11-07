@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
+#define dcout if (debug) std::cout << "[DEBUG] "
+#define end "\n"
+
 using namespace std;
 
 class InputBuffer {
@@ -77,8 +80,8 @@ int main(int argc, char **argv) {
                     }
                     break;
                 case 'd':
-                    cout << "debug enabled\n";
                     debug = true;
+                    dcout << "debug enabled" << end;
                     break;
                 case '?':
                     cout << "unknown option: " << optopt << "\nexiting...\n";
@@ -135,6 +138,7 @@ int main(int argc, char **argv) {
     winsize terminal{};
     ioctl(0, TIOCGWINSZ, &terminal); // get terminal dimensions
     const unsigned short columns = terminal.ws_col;
+    dcout << "terminal columns: " << columns << end;
 
     cout << "connecting to port " << port << " with file " << file << "\n";
 
@@ -147,8 +151,11 @@ int main(int argc, char **argv) {
     InputBuffer bufferSize(2);
     serialConnection.read(bufferSize, bufferSize.size());
 
+    dcout << "reported buffer size: " << (uint16_t) bufferSize << end;
+
     auto numberOfPackets = (short) (fileSize / bufferSize + (fileSize % bufferSize == 0 ? 0 : 1));
     for (int i = 0; i < numberOfPackets; i++) { // iterates once for every packet needed to send
+        dcout << "iteration: " << i << end;
         uint8_t flag = 0;
         serialConnection.read(&flag, 1);
         uint16_t remainingBytes = fileSize - (bufferSize * i);
@@ -157,6 +164,7 @@ int main(int argc, char **argv) {
         } else {
             serialConnection.write(bufferSize, 2);
         }
+        dcout << "\tsize of packet: " << (remainingBytes < bufferSize ? remainingBytes : bufferSize) << end;
         serialConnection.write((uint8_t*)&(byteFile[i * bufferSize]), remainingBytes < bufferSize ? remainingBytes : bufferSize);
     }
 
