@@ -4,6 +4,7 @@
 #include <bitset>
 #include <serial/serial.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 using namespace std;
 
@@ -39,17 +40,8 @@ long getSize(std::ifstream &file) {
 }
 
 template<typename t>
-std::vector<uint8_t> getVectorFrom(t value) {
-    std::vector<uint8_t> output;
-    for (int i = 0; i < sizeof(t); i++) {
-        output.push_back((value >> i * 8) & 0xFF);
-    }
-    return output;
-}
-
-std::vector<uint8_t> subarray(char * index, uint16_t size) {
-    std::vector<uint8_t> output(index, index + size);
-    return output;
+uint8_t* getArrayFrom(t* value) {
+    return (uint8_t*)value;
 }
 
 void autoSelectPort(string & port) {
@@ -66,10 +58,11 @@ int main(int argc, char **argv) {
 
     string port;
     string file;
+    bool debug;
 
     if (argc > 1) { // args == true
         int opt;
-        while((opt = getopt(argc, argv, "p:f:s")) != -1) {
+        while((opt = getopt(argc, argv, "p:f:sd")) != -1) {
             switch(opt) {
                 case 'p':
                     port = optarg;
@@ -79,6 +72,13 @@ int main(int argc, char **argv) {
                     break;
                 case 's':
                     autoSelectPort(port);
+                    if (port.empty()) {
+                        cout << "failed to auto select a port, referring to manual selection\n";
+                    }
+                    break;
+                case 'd':
+                    cout << "debug enabled\n";
+                    debug = true;
                     break;
                 case '?':
                     cout << "unknown option: " << optopt << "\nexiting...\n";
@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
         cout << "\n" << port << endl;
     }
 
-    ifstream input(file, std::ifstream::binary | std::ifstream::ate);
+    ifstream input(file, std::ifstream::binary | std::ifstream::ate); // binary file beginning at the last index
     if (!input.is_open()) {
         cout << "failed to open file: " << file << "\nexiting...\n";
         return 1;
@@ -132,16 +132,14 @@ int main(int argc, char **argv) {
     char *byteFile = new char[fileSize];
     input.getline(byteFile, fileSize);
 
-    for (int i = 0; i < fileSize; i++) {
-        cout << byteFile[i];
-    }
-
-    cout << endl;
+    winsize terminal{};
+    ioctl(0, TIOCGWINSZ, &terminal); // get terminal dimensions
+    const unsigned short columns = terminal.ws_col;
 
     cout << "connecting to port " << port << " with file " << file << "\n";
 
     serial::Serial serialConnection(port, 9600, serial::Timeout::simpleTimeout(1000));
-    serialConnection.flushInput();
+    serialConnection.flush();
     serialConnection.write("write");
 
     serialConnection.waitReadable();
@@ -149,31 +147,19 @@ int main(int argc, char **argv) {
     InputBuffer bufferSize(2);
     serialConnection.read(bufferSize, bufferSize.size());
 
-    std::vector<uint8_t> test[14];
-
-    for (int i = 0; i < fileSize / bufferSize + (fileSize % bufferSize == 0 ? 0 : 1); i++) { // iterates once for every packet needed to send
-        serialConnection.waitReadable();
-        serialConnection.read(1);
-        cout << "iteration " << i << "\n";
+    auto numberOfPackets = (short) (fileSize / bufferSize + (fileSize % bufferSize == 0 ? 0 : 1));
+    for (int i = 0; i < numberOfPackets; i++) { // iterates once for every packet needed to send
+        uint8_t flag = 0;
+        serialConnection.read(&flag, 1);
         uint16_t remainingBytes = fileSize - (bufferSize * i);
         if (remainingBytes <= bufferSize) {
-            serialConnection.write(getVectorFrom<uint16_t>(remainingBytes));
+            serialConnection.write(getArrayFrom<uint16_t>(&remainingBytes), 2);
         } else {
             serialConnection.write(bufferSize, 2);
         }
-        test[i] = subarray(&(byteFile[i * bufferSize]), remainingBytes < bufferSize ? remainingBytes : bufferSize);
-        serialConnection.write(subarray(&(byteFile[i * bufferSize]), remainingBytes < bufferSize ? remainingBytes : bufferSize));
+        serialConnection.write((uint8_t*)&(byteFile[i * bufferSize]), remainingBytes < bufferSize ? remainingBytes : bufferSize);
     }
 
-    /*
-    bool failed = false;
-    for (int i = 0; i < 14; i++) {
-        for (int j = 0; j < test[i].size(); j++) {
-            failed = failed || ((char) test[i][j] != byteFile[(i * 4096) + j]);
-        }
-    }
-    cout << failed << endl;
-     */
-
+    serialConnection.close();
     delete[] byteFile;
 }
