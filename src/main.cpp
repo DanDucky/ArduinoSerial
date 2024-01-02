@@ -4,10 +4,11 @@
 #include <bitset>
 #include <serial/serial.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
+//#include <sys/ioctl.h>
 
 #define dcout if (debug) std::cout << "[DEBUG] "
 #define end "\n"
+#define INIT_ARRAY(array, size) for (int i = 0; i < size; i++) { array[i] = 0; }
 
 using namespace std;
 
@@ -56,6 +57,16 @@ enum Process {
     READ_BYTE
 };
 
+uint8_t readByte(serial::Serial* serialConnection, uint8_t* data, uint16_t address) {
+    uint8_t process = READ_BYTE;
+    serialConnection->write(&process, 1);
+    serialConnection->write((uint8_t*)&address, 2);
+    serialConnection->read(data, 1);
+    uint8_t signal;
+    serialConnection->read(&signal, 1);
+    return signal;
+}
+
 uint8_t writeByte(serial::Serial* serialConnection, uint8_t data, uint16_t address) {
     uint8_t process = WRITE_BYTE;
     serialConnection->write(&process, 1);
@@ -93,32 +104,23 @@ uint8_t writeProcess(serial::Serial* serialConnection, const char* byteFile, uns
         uint8_t flag = 0;
         serialConnection->read(&flag, 1);
         if (flag != 0xFF) return 1;
-        uint16_t remainingBytes = fileSize - (bufferSize * i);
+        uint16_t remainingBytes = fileSize - (bufferSize * i) + 1;
         if (remainingBytes <= bufferSize) {
             serialConnection->write(getArrayFrom<uint16_t>(&remainingBytes), 2);
         } else {
             serialConnection->write(bufferSize, 2);
         }
-        const auto packetSize = (remainingBytes < bufferSize ? remainingBytes : bufferSize);
+        const auto packetSize = (remainingBytes <= bufferSize ? remainingBytes : bufferSize);
         dcout << "\tsize of packet: " << packetSize << end;
         const auto* out = static_cast<const uint8_t*>(static_cast<const void*>(&(byteFile[i * bufferSize])));
         serialConnection->write(out, packetSize);
-        uint8_t buff[packetSize];
-        serialConnection->read(buff, packetSize);
-        for (int j = 0; j < packetSize; j++) {
-            if (buff[j] != out[j]) dcout << "SERIAL_ERROR!!!!!!!!!!!!!!!! " << std::bitset<8>(buff[j]) << " : " << std::bitset<8>(out[j]) << end;
-        }
-        serialConnection->read(buff, packetSize);
-        for (int j = 0; j < packetSize; j++) {
-            if (buff[j] != out[j]) dcout << "READ_ERROR!!!!!!!!!!!!!!!! " << std::bitset<8>(buff[j]) << " : " << std::bitset<8>(out[j]) << " : " << i * bufferSize + j << end;
-        }
     }
     uint8_t signal = 0x00;
     serialConnection->read(&signal, 1);
     return signal;
 }
 
-uint8_t readProcess(serial::Serial* serialConnection, unsigned char* fileFromArduino, unsigned long fileSize) {
+uint8_t readProcess(serial::Serial* serialConnection, unsigned char* fileFromArduino, uint16_t fileSize) {
     uint8_t opcode = READ;
     serialConnection->write(&opcode, 1);
 
@@ -133,6 +135,7 @@ uint8_t readProcess(serial::Serial* serialConnection, unsigned char* fileFromArd
 
     uint8_t signal = 0x00;
     serialConnection->read(&signal, 1);
+    dcout << "read signal as " << std::bitset<8>(signal) << end;
     return signal;
 }
 
@@ -238,6 +241,13 @@ int main(int argc, char **argv) {
     serialConnection.flush();
     writeProcess(&serialConnection, byteFile, fileSize);
     serialConnection.flush();
+//    for (int i = 0; i < 50000; i++) {
+//        writeByte(&serialConnection, 0, i);
+//        uint8_t out;
+//        readByte(&serialConnection, &out, i);
+//        if (out != 0) dcout << std::bitset<8>(out) << " = " << i << end;
+//    }
+
 //    process = READ_BYTE;
 //    serialConnection.write(&process, 1);
 //    serialConnection.write((uint8_t*)&address, 2);
@@ -246,17 +256,21 @@ int main(int argc, char **argv) {
 //    dcout << std::bitset<8>(data) << end;
 //    writeProcess(&serialConnection, byteFile, fileSize);
 //    serialConnection.flush();
+
     auto *fileFromArduino = new unsigned char[fileSize];
-    readProcess(&serialConnection, fileFromArduino, fileSize);
+    INIT_ARRAY(fileFromArduino, fileSize);
+
+    if (readProcess(&serialConnection, fileFromArduino, fileSize) == 1) return 1;
     serialConnection.close();
     int missed  =0 ;
     for (int i = 0; i < fileSize; i++) {
-        if (byteFile[i] != fileFromArduino[i] && i < 600) {
+        if (byteFile[i] != static_cast<char>(fileFromArduino[i])) {
             dcout << "ERROR AT INDEX " << i << " WHERE FILE IS " << std::bitset<8>(byteFile[i]) << " AND ROM IS " << std::bitset<8>(fileFromArduino[i]) << end;
             missed++;
         }
     }
     dcout << "missed " << missed << " words" << end;
+
 
     delete[] fileFromArduino;
     delete[] byteFile;
