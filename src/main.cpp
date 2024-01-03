@@ -3,8 +3,10 @@
 #include <vector>
 #include <bitset>
 #include <serial/serial.h>
-#include <unistd.h>
+#include <cstdint>
 //#include <sys/ioctl.h>
+#include "../include/progressbar.hpp"
+#include "../include/universalGetopt.hpp"
 
 #define dcout if (debug) std::cout << "[DEBUG] "
 #define end "\n"
@@ -57,35 +59,32 @@ enum Process {
     READ_BYTE
 };
 
-uint8_t readByte(serial::Serial* serialConnection, uint8_t* data, uint16_t address) {
-    uint8_t process = READ_BYTE;
+void declareProcess(serial::Serial* serialConnection, uint8_t process) {
     serialConnection->write(&process, 1);
-    serialConnection->write((uint8_t*)&address, 2);
-    serialConnection->read(data, 1);
+}
+
+uint8_t readSignal(serial::Serial* serialConnection) {
     uint8_t signal;
     serialConnection->read(&signal, 1);
     return signal;
+}
+
+uint8_t readByte(serial::Serial* serialConnection, uint8_t* data, uint16_t address) {
+    declareProcess(serialConnection, READ_BYTE);
+    serialConnection->write((uint8_t*)&address, 2);
+    serialConnection->read(data, 1);
+    return readSignal(serialConnection);
 }
 
 uint8_t writeByte(serial::Serial* serialConnection, uint8_t data, uint16_t address) {
-    uint8_t process = WRITE_BYTE;
-    serialConnection->write(&process, 1);
+    declareProcess(serialConnection, WRITE_BYTE);
     serialConnection->write((uint8_t*)&address, 2);
     serialConnection->write(&data, 1);
-    uint8_t signal;
-    serialConnection->read(&signal, 1);
-    return signal;
+    return readSignal(serialConnection);
 }
 
 uint8_t writeProcess(serial::Serial* serialConnection, const char* byteFile, unsigned long fileSize) {
-//    for (int i = 0; i< fileSize; i++) {
-//        writeByte(serialConnection, byteFile[i], i);
-//    }
-//    return 1;
-
-
-    uint8_t opcode = WRITE;
-    serialConnection->write(&opcode, 1);
+    declareProcess(serialConnection, WRITE);
 
     serialConnection->waitReadable();
 
@@ -97,10 +96,6 @@ uint8_t writeProcess(serial::Serial* serialConnection, const char* byteFile, uns
     const auto numberOfPackets = (short) (fileSize / bufferSize + (fileSize % bufferSize == 0 ? 0 : 1));
     for (int i = 0; i < numberOfPackets; i++) { // iterates once for every packet needed to send
         dcout << "iteration: " << i << end;
-//        while(serialConnection.read(&flag, 1) != 1) {
-//            dcout << "waiting" << end;
-//        }
-//        serialConnection.waitReadable();
         uint8_t flag = 0;
         serialConnection->read(&flag, 1);
         if (flag != 0xFF) return 1;
@@ -115,28 +110,19 @@ uint8_t writeProcess(serial::Serial* serialConnection, const char* byteFile, uns
         const auto* out = static_cast<const uint8_t*>(static_cast<const void*>(&(byteFile[i * bufferSize])));
         serialConnection->write(out, packetSize);
     }
-    uint8_t signal = 0x00;
-    serialConnection->read(&signal, 1);
-    return signal;
+    return readSignal(serialConnection);
 }
 
 uint8_t readProcess(serial::Serial* serialConnection, unsigned char* fileFromArduino, uint16_t fileSize) {
-    uint8_t opcode = READ;
-    serialConnection->write(&opcode, 1);
+    declareProcess(serialConnection, READ);
 
     serialConnection->write((uint8_t*)&fileSize, 2);
 
-    dcout;
     for (int i = 0; i < fileSize; i++) {
         if (serialConnection->read(&fileFromArduino[i], 1) != 1) return 1;
-        if (debug) cout << i<<".";
     }
-    if (debug) cout << end;
 
-    uint8_t signal = 0x00;
-    serialConnection->read(&signal, 1);
-    dcout << "read signal as " << std::bitset<8>(signal) << end;
-    return signal;
+    return readSignal(serialConnection);
 }
 
 void autoSelectPort(string & port) {
@@ -156,13 +142,13 @@ int main(int argc, char **argv) {
 
     if (argc > 1) { // args == true
         int opt;
-        while((opt = getopt(argc, argv, "p:f:sd")) != -1) {
+        while((opt = uni::getopt(argc, argv, "p:f:sd")) != -1) {
             switch(opt) {
                 case 'p':
-                    port = optarg;
+                    port = uni::optarg;
                     break;
                 case 'f':
-                    file = optarg;
+                    file = uni::optarg;
                     break;
                 case 's':
                     autoSelectPort(port);
@@ -175,7 +161,7 @@ int main(int argc, char **argv) {
                     dcout << "debug enabled" << end;
                     break;
                 case '?':
-                    cout << "unknown option: " << optopt << "\nexiting...\n";
+                    cout << "unknown option: " << uni::optopt << "\nexiting...\n";
                     return 1;
                 default:
                     cout << "huh?\nexiting...\n";
