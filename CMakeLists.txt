@@ -29,7 +29,7 @@ CPMAddPackage("gh:google/googletest@1.14.0")
 CPMAddPackage("gh:ros/catkin#0.8.10")
 set(catkin_EXTRAS_DIR ${catkin_SOURCE_DIR}/cmake)
 set(CATKIN_DEVEL_PREFIX ${CMAKE_BINARY_DIR}/devel)
-set(GTEST_LIBRARIECMAKE_BINARY_DIR}/_deps/catkin-srcS gtest)
+set(GTEST_LIBRARIES gtest)
 CPMAddPackage("gh:wjwwood/serial#1.2.1")
 
 target_include_directories(ArduinoSerial PUBLIC ${serial_SOURCE_DIR}/include)
