@@ -24,12 +24,12 @@ jobs:
           - {
             name: "Ubuntu Latest GCC", artifact: "Linux.7z",
             os: ubuntu-latest,
-            cc: "gcc", cxx: "g++"
+            cc: "gcc", cxx: "g++", cpp_flags: "-static"
           }
           - {
             name: "macOS Latest Clang", artifact: "macOS.7z",
             os: ubuntu-latest,
-            cc: "clang-17", cxx: "clang-17"
+            cc: "clang-17", cxx: "clang-17", cpp_flags: "-static"
           }
 
     steps:
