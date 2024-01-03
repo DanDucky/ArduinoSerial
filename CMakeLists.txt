@@ -21,9 +21,9 @@ file(DOWNLOAD
 include(include/cmake/get_cpm.cmake)
 
 execute_process(COMMAND
-        pip install catkin_pkg --break-system-packages)
+        pip install catkin_pkg)
 execute_process(COMMAND
-        pip install empy --break-system-packages)
+        pip install empy)
 
 CPMAddPackage("gh:google/googletest@1.14.0")
 CPMAddPackage("gh:ros/catkin#0.8.10")
