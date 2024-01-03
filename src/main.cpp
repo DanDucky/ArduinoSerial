@@ -4,7 +4,6 @@
 #include <bitset>
 #include <serial/serial.h>
 #include <cstdint>
-//#include <sys/ioctl.h>
 #include "../include/progressbar.hpp"
 #include "../include/universalGetopt.hpp"
 
@@ -63,6 +62,10 @@ enum Process {
     READ_BYTE
 };
 
+void checkDiff(unsigned char* x, unsigned char* y, size_t size) {
+
+}
+
 uint8_t readByte(serial::Serial* serialConnection, uint8_t* data, uint16_t address) {
     declareProcess(READ_BYTE);
     serialConnection->write((uint8_t*)&address, 2);
@@ -77,7 +80,7 @@ uint8_t writeByte(serial::Serial* serialConnection, uint8_t data, uint16_t addre
     return readSignal();
 }
 
-uint8_t writeProcess(serial::Serial* serialConnection, const char* byteFile, unsigned long fileSize) {
+uint8_t writeProcess(serial::Serial* serialConnection, const unsigned char* byteFile, unsigned long fileSize) {
     declareProcess(WRITE);
 
     serialConnection->waitReadable();
@@ -88,6 +91,11 @@ uint8_t writeProcess(serial::Serial* serialConnection, const char* byteFile, uns
     dcout << "reported buffer size: " << (uint16_t) bufferSize << end;
 
     const auto numberOfPackets = (short) (fileSize / bufferSize + (fileSize % bufferSize == 0 ? 0 : 1));
+    progressbar bar(numberOfPackets);
+    bar.set_opening_bracket_char("[");
+    bar.set_closing_bracket_char("]");
+    bar.set_todo_char(" ");
+    bar.set_done_char("#");
     for (int i = 0; i < numberOfPackets; i++) { // iterates once for every packet needed to send
         dcout << "iteration: " << i << end;
         uint8_t flag = 0;
@@ -103,7 +111,9 @@ uint8_t writeProcess(serial::Serial* serialConnection, const char* byteFile, uns
         dcout << "\tsize of packet: " << packetSize << end;
         const auto* out = static_cast<const uint8_t*>(static_cast<const void*>(&(byteFile[i * bufferSize])));
         serialConnection->write(out, packetSize);
+        bar.update();
     }
+    cout << end;
     return readSignal();
 }
 
@@ -112,9 +122,16 @@ uint8_t readProcess(serial::Serial* serialConnection, unsigned char* fileFromArd
 
     serialConnection->write((uint8_t*)&fileSize, 2);
 
+    progressbar bar(fileSize);
+    bar.set_opening_bracket_char("[");
+    bar.set_closing_bracket_char("]");
+    bar.set_todo_char(" ");
+    bar.set_done_char("#");
     for (int i = 0; i < fileSize; i++) {
         if (serialConnection->read(&fileFromArduino[i], 1) != 1) return 1;
+        bar.update();
     }
+    cout << end;
 
     return readSignal();
 }
@@ -203,54 +220,20 @@ int main(int argc, char **argv) {
         return 1;
     }
     const long fileSize = getSize(input);
-    char *byteFile = new char[fileSize];
-    input.getline(byteFile, fileSize);
-
-//    winsize terminal{};
-//    ioctl(0, TIOCGWINSZ, &terminal); // get terminal dimensions
-//    const unsigned short columns = terminal.ws_col;
-//    dcout << "terminal columns: " << columns << end;
+    auto *byteFile = new unsigned char[fileSize];
+    input.getline(reinterpret_cast<char*>(byteFile), fileSize);
 
     cout << "connecting to port " << port << " with file " << file << " of size " << fileSize << "\n";
-
-//    for (int i = 0; i < fileSize; i++) {
-//        byteFile[i] = 0xFF;
-//    }
 
     serial::Serial serialConnection(port, 9600, serial::Timeout::simpleTimeout(10000));
     serialConnection.flush();
     writeProcess(&serialConnection, byteFile, fileSize);
     serialConnection.flush();
-//    for (int i = 0; i < 50000; i++) {
-//        writeByte(&serialConnection, 0, i);
-//        uint8_t out;
-//        readByte(&serialConnection, &out, i);
-//        if (out != 0) dcout << std::bitset<8>(out) << " = " << i << end;
-//    }
-
-//    process = READ_BYTE;
-//    serialConnection.write(&process, 1);
-//    serialConnection.write((uint8_t*)&address, 2);
-//    serialConnection.read(&data, 1);
-//    serialConnection.read(&signal, 1);
-//    dcout << std::bitset<8>(data) << end;
-//    writeProcess(&serialConnection, byteFile, fileSize);
-//    serialConnection.flush();
-
     auto *fileFromArduino = new unsigned char[fileSize];
     INIT_ARRAY(fileFromArduino, fileSize);
-
     if (readProcess(&serialConnection, fileFromArduino, fileSize) == 1) return 1;
     serialConnection.close();
-    int missed  =0 ;
-    for (int i = 0; i < fileSize; i++) {
-        if (byteFile[i] != static_cast<char>(fileFromArduino[i])) {
-            dcout << "ERROR AT INDEX " << i << " WHERE FILE IS " << std::bitset<8>(byteFile[i]) << " AND ROM IS " << std::bitset<8>(fileFromArduino[i]) << end;
-            missed++;
-        }
-    }
-    dcout << "missed " << missed << " words" << end;
-
+    checkDiff(fileFromArduino, byteFile, fileSize);
 
     delete[] fileFromArduino;
     delete[] byteFile;
