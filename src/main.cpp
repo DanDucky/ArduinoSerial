@@ -11,6 +11,10 @@
 #define dcout if (debug) std::cout << "[DEBUG] "
 #define end "\n"
 #define INIT_ARRAY(array, size) for (int i = 0; i < size; i++) { array[i] = 0; }
+#define declareProcess(process)     \
+uint8_t opcode = process;           \
+serialConnection->write(&opcode, 1)
+#define readSignal() static_cast<uint8_t>(serialConnection->read(1)[0])
 
 using namespace std;
 
@@ -59,32 +63,22 @@ enum Process {
     READ_BYTE
 };
 
-void declareProcess(serial::Serial* serialConnection, uint8_t process) {
-    serialConnection->write(&process, 1);
-}
-
-uint8_t readSignal(serial::Serial* serialConnection) {
-    uint8_t signal;
-    serialConnection->read(&signal, 1);
-    return signal;
-}
-
 uint8_t readByte(serial::Serial* serialConnection, uint8_t* data, uint16_t address) {
-    declareProcess(serialConnection, READ_BYTE);
+    declareProcess(READ_BYTE);
     serialConnection->write((uint8_t*)&address, 2);
     serialConnection->read(data, 1);
-    return readSignal(serialConnection);
+    return readSignal();
 }
 
 uint8_t writeByte(serial::Serial* serialConnection, uint8_t data, uint16_t address) {
-    declareProcess(serialConnection, WRITE_BYTE);
+    declareProcess(WRITE_BYTE);
     serialConnection->write((uint8_t*)&address, 2);
     serialConnection->write(&data, 1);
-    return readSignal(serialConnection);
+    return readSignal();
 }
 
 uint8_t writeProcess(serial::Serial* serialConnection, const char* byteFile, unsigned long fileSize) {
-    declareProcess(serialConnection, WRITE);
+    declareProcess(WRITE);
 
     serialConnection->waitReadable();
 
@@ -110,11 +104,11 @@ uint8_t writeProcess(serial::Serial* serialConnection, const char* byteFile, uns
         const auto* out = static_cast<const uint8_t*>(static_cast<const void*>(&(byteFile[i * bufferSize])));
         serialConnection->write(out, packetSize);
     }
-    return readSignal(serialConnection);
+    return readSignal();
 }
 
 uint8_t readProcess(serial::Serial* serialConnection, unsigned char* fileFromArduino, uint16_t fileSize) {
-    declareProcess(serialConnection, READ);
+    declareProcess(READ);
 
     serialConnection->write((uint8_t*)&fileSize, 2);
 
@@ -122,7 +116,7 @@ uint8_t readProcess(serial::Serial* serialConnection, unsigned char* fileFromArd
         if (serialConnection->read(&fileFromArduino[i], 1) != 1) return 1;
     }
 
-    return readSignal(serialConnection);
+    return readSignal();
 }
 
 void autoSelectPort(string & port) {
