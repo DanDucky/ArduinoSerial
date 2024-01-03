@@ -32,7 +32,7 @@ set(CATKIN_DEVEL_PREFIX ${CMAKE_BINARY_DIR}/devel)
 set(GTEST_LIBRARIES gtest)
 CPMAddPackage("gh:wjwwood/serial#1.2.1")
 
-target_include_directories(ArduinoSerial PUBLIC ${CMAKE_BINARY_DIR}/_deps/serial-src/include/serial)
+target_include_directories(ArduinoSerial PUBLIC ${CMAKE_BINARY_DIR}/_deps/serial-src/include)
 target_link_libraries(ArduinoSerial ${CPM_LAST_PACKAGE_NAME} stdc++)
 
 install(TARGETS ArduinoSerial)
