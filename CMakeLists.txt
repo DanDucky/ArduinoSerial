@@ -30,7 +30,13 @@ CPMAddPackage("gh:ros/catkin#0.8.10")
 set(catkin_EXTRAS_DIR ${catkin_SOURCE_DIR}/cmake)
 set(CATKIN_DEVEL_PREFIX ${CMAKE_BINARY_DIR}/devel)
 set(GTEST_LIBRARIES gtest)
-CPMAddPackage("gh:wjwwood/serial#1.2.1")
+set(BUILD_SHARED_LIBS OFF)
+CPMAddPackage(
+        NAME serial
+        GIT_TAG 1.2.1
+        GITHUB_REPOSITORY wjwwood/serial
+        OPTIONS "BUILD_SHARED_LIBS OFF"
+)
 
 target_include_directories(ArduinoSerial PUBLIC ${serial_SOURCE_DIR}/include)
 target_link_libraries(ArduinoSerial ${CPM_LAST_PACKAGE_NAME} stdc++)
