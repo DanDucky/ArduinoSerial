@@ -31,17 +31,19 @@ set(catkin_EXTRAS_DIR ${catkin_SOURCE_DIR}/cmake)
 set(CATKIN_DEVEL_PREFIX ${CMAKE_BINARY_DIR}/devel)
 set(GTEST_LIBRARIES gtest)
 set(BUILD_SHARED_LIBS OFF)
-set(CMAKE_ABSOLUTE_DESTINATION_FILES ${CMAKE_BINARY_DIR})
+#set(CMAKE_ABSOLUTE_DESTINATION_FILES ${CMAKE_BINARY_DIR})
 CPMAddPackage(
         NAME serial
         GIT_TAG 1.2.1
         GITHUB_REPOSITORY wjwwood/serial
         OPTIONS
             "BUILD_SHARED_LIBS OFF"
-            "CMAKE_CXX_FLAGS -I${CMAKE_BINARY_DIR}/_deps/serial-src/include"
+            "CMAKE_CXX_FLAGS -I${CMAKE_BINARY_DIR}/_deps/serial-src/include -static"
 )
 
 target_include_directories(ArduinoSerial PUBLIC ${serial_SOURCE_DIR}/include)
 target_link_libraries(ArduinoSerial ${CPM_LAST_PACKAGE_NAME} stdc++)
 
+set(CMAKE_INSTALL_COMPONENT "no")
+set(CMAKE_INSTALL_COMPONENT ON)
 install(TARGETS ArduinoSerial)
