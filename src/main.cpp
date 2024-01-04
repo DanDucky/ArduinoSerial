@@ -63,7 +63,9 @@ enum Process {
 };
 
 void checkDiff(unsigned char* x, unsigned char* y, size_t size) {
-
+    for (size_t i = 0; i < size; i++) {
+        if (x[i] != y[i]) cout << "error at index " << i << " (" << std::bitset<16>(i) << ") where ROM is " << std::bitset<8>(x[i]) << " and file is " << std::bitset<8>(y[i]) << end;
+    }
 }
 
 uint8_t readByte(serial::Serial* serialConnection, uint8_t* data, uint16_t address) {
@@ -83,8 +85,6 @@ uint8_t writeByte(serial::Serial* serialConnection, uint8_t data, uint16_t addre
 uint8_t writeProcess(serial::Serial* serialConnection, const unsigned char* byteFile, unsigned long fileSize) {
     declareProcess(WRITE);
 
-    serialConnection->waitReadable();
-
     InputBuffer bufferSize(2);
     serialConnection->read(bufferSize, bufferSize.size());
 
@@ -97,6 +97,7 @@ uint8_t writeProcess(serial::Serial* serialConnection, const unsigned char* byte
     bar.set_todo_char(" ");
     bar.set_done_char("#");
     for (int i = 0; i < numberOfPackets; i++) { // iterates once for every packet needed to send
+        bar.update();
         dcout << "iteration: " << i << end;
         uint8_t flag = 0;
         serialConnection->read(&flag, 1);
@@ -111,7 +112,6 @@ uint8_t writeProcess(serial::Serial* serialConnection, const unsigned char* byte
         dcout << "\tsize of packet: " << packetSize << end;
         const auto* out = static_cast<const uint8_t*>(static_cast<const void*>(&(byteFile[i * bufferSize])));
         serialConnection->write(out, packetSize);
-        bar.update();
     }
     cout << end;
     return readSignal();
@@ -230,7 +230,6 @@ int main(int argc, char **argv) {
     writeProcess(&serialConnection, byteFile, fileSize);
     serialConnection.flush();
     auto *fileFromArduino = new unsigned char[fileSize];
-    INIT_ARRAY(fileFromArduino, fileSize);
     if (readProcess(&serialConnection, fileFromArduino, fileSize) == 1) return 1;
     serialConnection.close();
     checkDiff(fileFromArduino, byteFile, fileSize);
