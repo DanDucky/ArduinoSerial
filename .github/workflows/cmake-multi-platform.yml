@@ -199,6 +199,11 @@ jobs:
           endif()
 
       - name: Install Strip
+        if: matrix.config.os == 'ubuntu-latest'
+        run: sudo cmake --install build --prefix instdir --strip
+
+      - name: Install Strip Windows
+        if: matrix.config.os == 'windows-latest'
         run: cmake --install build --prefix instdir --strip
 
       - name: Pack
