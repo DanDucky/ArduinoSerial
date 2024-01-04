@@ -2,7 +2,7 @@
 cmake-build-debug
 cmake-build-debug-coverage
 test
-include/progressbar.hpp
+include/indicators.hpp
 include/cmake/get_cpm.cmake
 include/universalGetopt.hpp
 include/universalGetopt.cpp

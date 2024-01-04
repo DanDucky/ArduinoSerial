@@ -4,8 +4,8 @@
 #include <bitset>
 #include <serial/serial.h>
 #include <cstdint>
-#include "../include/progressbar.hpp"
-#include "../include/universalGetopt.hpp"
+#include <indicators.hpp>
+#include <universalGetopt.hpp>
 
 #define dcout if (debug) std::cout << "[DEBUG] "
 #define end "\n"
@@ -16,8 +16,18 @@ serialConnection->write(&opcode, 1)
 #define readSignal() static_cast<uint8_t>(serialConnection->read(1)[0])
 
 using namespace std;
+using namespace indicators;
 
 bool debug;
+#define defaults \
+    option::BarWidth{50},\
+    option::Start{"["},\
+    option::Fill{"#"},\
+    option::Lead{">"},\
+    option::Remainder{" "},\
+    option::End{"]"},\
+    option::ShowElapsedTime{true}, \
+    option::ShowRemainingTime{true}
 
 class InputBuffer {
 public:
@@ -91,13 +101,12 @@ uint8_t writeProcess(serial::Serial* serialConnection, const unsigned char* byte
     dcout << "reported buffer size: " << (uint16_t) bufferSize << end;
 
     const auto numberOfPackets = (short) (fileSize / bufferSize + (fileSize % bufferSize == 0 ? 0 : 1));
-    progressbar bar(numberOfPackets);
-    bar.set_opening_bracket_char("[");
-    bar.set_closing_bracket_char("]");
-    bar.set_todo_char(" ");
-    bar.set_done_char("#");
+    ProgressBar bar{
+        defaults,
+        option::PostfixText{"sending file to ROM"}
+    };
     for (int i = 0; i < numberOfPackets; i++) { // iterates once for every packet needed to send
-        bar.update();
+        bar.set_progress(100 * i / numberOfPackets);
         dcout << "iteration: " << i << end;
         uint8_t flag = 0;
         serialConnection->read(&flag, 1);
@@ -113,7 +122,7 @@ uint8_t writeProcess(serial::Serial* serialConnection, const unsigned char* byte
         const auto* out = static_cast<const uint8_t*>(static_cast<const void*>(&(byteFile[i * bufferSize])));
         serialConnection->write(out, packetSize);
     }
-    cout << end;
+    bar.set_progress(100);
     return readSignal();
 }
 
@@ -122,16 +131,15 @@ uint8_t readProcess(serial::Serial* serialConnection, unsigned char* fileFromArd
 
     serialConnection->write((uint8_t*)&fileSize, 2);
 
-    progressbar bar(fileSize);
-    bar.set_opening_bracket_char("[");
-    bar.set_closing_bracket_char("]");
-    bar.set_todo_char(" ");
-    bar.set_done_char("#");
+    ProgressBar bar{
+            defaults,
+            option::PostfixText{"reading back ROM"}
+    };
     for (int i = 0; i < fileSize; i++) {
+        bar.set_progress(100*i/fileSize);
         if (serialConnection->read(&fileFromArduino[i], 1) != 1) return 1;
-        bar.update();
     }
-    cout << end;
+    bar.set_progress(100);
 
     return readSignal();
 }
@@ -225,6 +233,7 @@ int main(int argc, char **argv) {
 
     cout << "connecting to port " << port << " with file " << file << " of size " << fileSize << "\n";
 
+    show_console_cursor(false);
     serial::Serial serialConnection(port, 9600, serial::Timeout::simpleTimeout(10000));
     serialConnection.flush();
     writeProcess(&serialConnection, byteFile, fileSize);
@@ -233,7 +242,10 @@ int main(int argc, char **argv) {
     if (readProcess(&serialConnection, fileFromArduino, fileSize) == 1) return 1;
     serialConnection.close();
     checkDiff(fileFromArduino, byteFile, fileSize);
+    show_console_cursor(true);
 
     delete[] fileFromArduino;
     delete[] byteFile;
+
+    cout << "finished flashing ROM!" << end;
 }
