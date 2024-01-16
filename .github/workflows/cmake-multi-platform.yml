@@ -160,7 +160,7 @@ jobs:
         run: |
           rm build/_deps/serial-src/examples/serial_example.cc
           touch build/_deps/serial-src/examples/serial_example.cc
-          echo "int main () {return 0;}\n" >> build/_deps/serial-src/examples/serial_example.cc
+          echo "int main () {return 0;}" >> build/_deps/serial-src/examples/serial_example.cc
 
       - name: Build
         shell: cmake -P {0}
