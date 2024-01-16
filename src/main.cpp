@@ -23,8 +23,7 @@ bool debug;
     option::BarWidth{50},\
     option::Start{"["},\
     option::Fill{"#"},\
-    option::Lead{">"},\
-    option::Remainder{" "},\
+    option::Remainder{"-"},\
     option::End{"]"},\
     option::ShowElapsedTime{true}, \
     option::ShowRemainingTime{true}
