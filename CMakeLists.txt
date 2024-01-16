@@ -37,14 +37,14 @@ CPMAddPackage(
         GITHUB_REPOSITORY wjwwood/serial
         OPTIONS
             "BUILD_SHARED_LIBS OFF"
-            "CMAKE_CXX_FLAGS -I${CMAKE_BINARY_DIR}/_deps/serial-src/include -static -lstdc++"
+            "CMAKE_CXX_FLAGS -I${CMAKE_BINARY_DIR}/_deps/serial-src/include -static -lstdc++ -lmath"
 )
 
 set(CMAKE_CXX_FLAGS "-static")
 
 target_include_directories(ArduinoSerial PUBLIC ${serial_SOURCE_DIR}/include)
 target_include_directories(ArduinoSerial PUBLIC ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(ArduinoSerial ${CPM_LAST_PACKAGE_NAME} stdc++)
+target_link_libraries(ArduinoSerial ${CPM_LAST_PACKAGE_NAME} stdc++ m)
 
 set(CMAKE_INSTALL_COMPONENT "no")
 set(CMAKE_INSTALL_COMPONENT OFF)
