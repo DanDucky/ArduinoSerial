@@ -40,7 +40,7 @@ CPMAddPackage(
             "CMAKE_CXX_FLAGS -I${CMAKE_BINARY_DIR}/_deps/serial-src/include -static"
 )
 
-set(CMAKE_CXX_FLAGS "-lstdc++ -static")
+set(CMAKE_CXX_FLAGS "-static")
 
 target_include_directories(ArduinoSerial PUBLIC ${serial_SOURCE_DIR}/include)
 target_include_directories(ArduinoSerial PUBLIC ${CMAKE_SOURCE_DIR}/include)
