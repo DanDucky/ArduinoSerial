@@ -37,7 +37,7 @@ CPMAddPackage(
         GITHUB_REPOSITORY wjwwood/serial
         OPTIONS
             "BUILD_SHARED_LIBS OFF"
-            "CMAKE_CXX_FLAGS -I${CMAKE_BINARY_DIR}/_deps/serial-src/include -static -lstdc++ -lmath"
+            "CMAKE_CXX_FLAGS -I${CMAKE_BINARY_DIR}/_deps/serial-src/include -static -lstdc++ -lm"
 )
 
 set(CMAKE_CXX_FLAGS "-static")
