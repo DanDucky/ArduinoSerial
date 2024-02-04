@@ -3,7 +3,7 @@ project(ArduinoSerial)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(ArduinoSerial src/main.cpp include/indicators.hpp include/universalGetopt.cpp include/universalGetopt.hpp)
+add_executable(ArduinoSerial src/main.cpp)
 
 file (DOWNLOAD
         https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/get_cpm.cmake
