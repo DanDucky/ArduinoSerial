@@ -6,3 +6,4 @@ include/indicators.hpp
 include/cmake/get_cpm.cmake
 include/universalGetopt.hpp
 include/universalGetopt.cpp
+include/optargParser.hpp

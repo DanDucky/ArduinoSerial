@@ -9,14 +9,12 @@ file (DOWNLOAD
         https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/get_cpm.cmake
         ${CMAKE_SOURCE_DIR}/include/cmake/get_cpm.cmake)
 file(DOWNLOAD
-        https://raw.githubusercontent.com/DanDucky/ValentineAssembler/master/include/universalGetopt.hpp
-        ${CMAKE_SOURCE_DIR}/include/universalGetopt.hpp)
-file(DOWNLOAD
-        https://raw.githubusercontent.com/DanDucky/ValentineAssembler/master/include/universalGetopt.cpp
-        ${CMAKE_SOURCE_DIR}/include/universalGetopt.cpp)
-file(DOWNLOAD
         https://raw.githubusercontent.com/p-ranav/indicators/master/single_include/indicators/indicators.hpp
         ${CMAKE_SOURCE_DIR}/include/indicators.hpp)
+file(DOWNLOAD
+        https://raw.githubusercontent.com/DanDucky/ArgumentParser/master/include/CLIParser.hpp
+        ${CMAKE_SOURCE_DIR}/include/optargParser.hpp
+)
 
 include(include/cmake/get_cpm.cmake)
 

@@ -5,7 +5,7 @@
 #include <serial/serial.h>
 #include <cstdint>
 #include <indicators.hpp>
-#include <universalGetopt.hpp>
+#include <optargParser.hpp>
 
 #define dcout if (debug) std::cout << "[DEBUG] "
 #define end "\n"
@@ -155,44 +155,30 @@ void autoSelectPort(string & port) {
 
 int main(int argc, char **argv) {
 
-    string port;
-    string file;
+    cli::Opt<std::string, CLI_OPTION_NULL> port("Serial Port", "serial port to communicate with arduino", "p", "port");
+    cli::Opt<std::string, CLI_OPTION_NULL> file("File", "file to flash to the eeprom", "f", "file", "hex", "bin", "b");
+    cli::Opt<bool, CLI_OPTION_NULL> debugInput("Debug", "enter debug mode (with debug prints)", "d", "debug", "dev");
+    cli::Opt<bool, CLI_OPTION_NULL> autoSelect("Auto Port", "auto select port if port is not specified", "s", "auto", "select");
 
-    if (argc > 1) { // args == true
-        int opt;
-        while((opt = uni::getopt(argc, argv, "p:f:sd")) != -1) {
-            switch(opt) {
-                case 'p':
-                    port = uni::optarg;
-                    break;
-                case 'f':
-                    file = uni::optarg;
-                    break;
-                case 's':
-                    autoSelectPort(port);
-                    if (port.empty()) {
-                        cout << "failed to auto select a port, referring to manual selection\n";
-                    }
-                    break;
-                case 'd':
-                    debug = true;
-                    dcout << "debug enabled" << end;
-                    break;
-                case '?':
-                    cout << "unknown option: " << uni::optopt << "\nexiting...\n";
-                    return 1;
-                default:
-                    cout << "huh?\nexiting...\n";
-                    return 1;
-            }
+    cli::parse(argc, argv, port, file, debugInput, autoSelect);
+    if (debugInput) debug = true;
+    if (autoSelect) {
+        std::string selected;
+        autoSelectPort(selected);
+        if (selected.empty()) {
+            cout << "failed to auto select a port, referring to manual selection\n";
+        } else {
+            port.set(selected);
         }
     }
-    if (file.empty()) {
+    if (!file.hasValue()) {
         cout << "please enter the file you would like to send over serial: ";
-        cin >> file;
+        std::string inputFile;
+        cin >> inputFile;
+        file.set(inputFile);
         cout << "\n";
     }
-    if (port.empty()) {
+    if (!port.hasValue()) {
         vector<serial::PortInfo> devicesFound = serial::list_ports();
 
         int portSelectionNumber = 0;
@@ -218,19 +204,19 @@ int main(int argc, char **argv) {
             return 1;
         }
         port = validDevices[stoi(selection)].port;
-        cout << "\n" << port << endl;
+        cout << "\n" << (std::string)port << endl;
     }
 
     ifstream input(file, std::ifstream::binary | std::ifstream::ate); // binary file beginning at the last index
     if (!input.is_open()) {
-        cout << "failed to open file: " << file << "\nexiting...\n";
+        cout << "failed to open file: " << (std::string)file << "\nexiting...\n";
         return 1;
     }
     const long fileSize = getSize(input);
     auto *byteFile = new unsigned char[fileSize];
     input.getline(reinterpret_cast<char*>(byteFile), fileSize);
 
-    cout << "connecting to port " << port << " with file " << file << " of size " << fileSize << "\n";
+    cout << "connecting to port " << (std::string)port << " with file " << (std::string)file << " of size " << fileSize << "\n";
 
     show_console_cursor(false);
     serial::Serial serialConnection(port, 9600, serial::Timeout::simpleTimeout(10000));
